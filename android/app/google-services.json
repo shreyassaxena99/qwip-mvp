@@ -1,0 +1,46 @@
+{
+  "project_info": {
+    "project_number": "392686379506",
+    "project_id": "qwip-app-8ac86",
+    "storage_bucket": "qwip-app-8ac86.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:392686379506:android:0d9654dd24e08f40eb4b6b",
+        "android_client_info": {
+          "package_name": "com.qwip.app"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "392686379506-p47l7ash82u8qg5tm2ovsm5h9iurilt3.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCx4muYhudqmY8Au_afTk-2EEazfHfxL_E"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "392686379506-p47l7ash82u8qg5tm2ovsm5h9iurilt3.apps.googleusercontent.com",
+              "client_type": 3
+            },
+            {
+              "client_id": "392686379506-h0jmfqouf6vno26n7be41i5e49k0etar.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "com.example.qwipApp"
+              }
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
