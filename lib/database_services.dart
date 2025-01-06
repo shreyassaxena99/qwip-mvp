@@ -131,7 +131,7 @@ class DatabaseServices {
           startTime: startTime,
           endTime: endTime,
           createdAt: createdAt,
-          price: data['price'] as int,
+          price: data['price'] as double,
           notes: data['notes'] as String,
           status: data['status'] as String,
         );
@@ -164,6 +164,7 @@ class DatabaseServices {
           await QRCodeService.generateQRCode(bookingId);
       print("generateQRCodeResponse: ${generateQRCodeResponse}");
       if (!generateQRCodeResponse["success"]) {
+        booking.id = bookingId;
         await deleteBooking(booking);
         throw Exception("Failed to generate QR Code");
       } else {

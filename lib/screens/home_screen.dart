@@ -1,10 +1,10 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:qwip_app/components/booking_list.dart';
+import 'package:qwip_app/components/time_picker_modal.dart';
 import 'package:qwip_app/database_services.dart';
 import 'package:qwip_app/data_classes/pod.dart';
 import 'package:qwip_app/data_classes/booking.dart';
-import 'package:qwip_app/components/time_selection_dropdown.dart';
 import 'package:syncfusion_flutter_maps/maps.dart';
 import 'package:qwip_app/components/map_component.dart';
 import 'package:qwip_app/components/filter_pods.dart';
@@ -33,8 +33,8 @@ class _HomeScreenState extends State<HomeScreen> {
   DateTime? selectedDate;
 
   // Selected start and end times
-  String? selectedStartTime;
-  String? selectedEndTime;
+  TimeOfDay? selectedStartTime;
+  TimeOfDay? selectedEndTime;
 
   // Filtered pods to display on the map
   List<Pod> filteredPods = [];
@@ -57,42 +57,72 @@ class _HomeScreenState extends State<HomeScreen> {
       return;
     }
 
-    int startIndex = timeSlots.indexOf(selectedStartTime!);
-    int endIndex = timeSlots.indexOf(selectedEndTime!);
-
-    if (endIndex <= startIndex) {
-      print("Error: End time must be after start time.");
+    if (selectedDate == null) {
+      print("Error: Must select date");
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('End time must be after start time')),
+        const SnackBar(content: Text('Please select booking date')),
       );
       return;
     }
 
-    final List<String> selectedRange = timeSlots.sublist(startIndex, endIndex);
-    print("Selected range: $selectedRange");
+    // Combine selected date with selected times to create DateTime objects
+    final DateTime selectedStartDateTime = DateTime(
+      selectedDate!.year,
+      selectedDate!.month,
+      selectedDate!.day,
+      selectedStartTime!.hour,
+      selectedStartTime!.minute,
+    );
+
+    final DateTime selectedEndDateTime = DateTime(
+      selectedDate!.year,
+      selectedDate!.month,
+      selectedDate!.day,
+      selectedEndTime!.hour,
+      selectedEndTime!.minute,
+    );
+
+    print("Selected start: $selectedStartDateTime");
+    print("Selected end: $selectedEndDateTime");
 
     try {
-      // Use database accessor to fetch bookings in currentDate
+      // Fetch bookings for the selected date
       final List<Booking> bookings = await db.fetchBookingsByDate(selectedDate);
 
       print("Fetched ${bookings.length} bookings for the selected date.");
 
       print('Before updating filteredPods: ${filteredPods.hashCode}');
-      // Ensure `filteredPods` gets a new reference
       setState(() {
         filteredPods = List<Pod>.from(allPods.where((pod) {
-          // Parse pod opening and closing times
-          final openingTimeIndex = timeSlots.indexOf(pod.openingTime);
-          final closingTimeIndex = timeSlots.indexOf(pod.closingTime);
+          final List<String> openingParts = pod.openingTime.split(":");
+          final List<String> closingParts = pod.closingTime.split(":");
 
-          if (openingTimeIndex == -1 || closingTimeIndex == -1) {
-            print("Invalid opening or closing times for pod: ${pod.name}");
-            return false; // Exclude pod if its opening or closing time is invalid
-          }
+          print(
+              "Pod Opening Time and Closing time as strings ${pod.openingTime}, ${pod.closingTime}");
 
-          // Check if the selected time range falls within the pod's operating hours
+          final DateTime podOpeningTime = DateTime(
+            selectedDate!.year,
+            selectedDate!.month,
+            selectedDate!.day,
+            int.parse(openingParts[0]), // Hour
+            int.parse(openingParts[1]), // Minute
+          );
+
+          final DateTime podClosingTime = DateTime(
+            selectedDate!.year,
+            selectedDate!.month,
+            selectedDate!.day,
+            int.parse(closingParts[0]), // Hour
+            int.parse(closingParts[1]), // Minute
+          );
+
+          print(
+              "Pod Opening Time and Closing time as date times $podOpeningTime, $podClosingTime");
+
+          // Check if the selected time range is within the pod's operating hours
           bool isWithinOperatingHours =
-              startIndex >= openingTimeIndex && endIndex <= closingTimeIndex;
+              !selectedStartDateTime.isBefore(podOpeningTime) &&
+                  !selectedEndDateTime.isAfter(podClosingTime);
 
           if (!isWithinOperatingHours) {
             return false; // Exclude pods outside their operating hours
@@ -102,17 +132,26 @@ class _HomeScreenState extends State<HomeScreen> {
           bool isConflicting = bookings.any((booking) {
             if (booking.podId != pod.id) return false;
 
-            // Compare the selected time range with booking start and end times
-            final bookingStartIndex = timeSlots.indexOf(
-              "${booking.startTime.hour == 0 || booking.startTime.hour == 12 ? 12 : booking.startTime.hour % 12}:00 ${booking.startTime.hour < 12 ? 'AM' : 'PM'}",
+            // Create DateTime objects for booking start and end times
+            final DateTime bookingStartDateTime = DateTime(
+              booking.startTime.year,
+              booking.startTime.month,
+              booking.startTime.day,
+              booking.startTime.hour,
+              booking.startTime.minute,
             );
-            final bookingEndIndex = timeSlots.indexOf(
-              "${booking.endTime.hour == 0 || booking.endTime.hour == 12 ? 12 : booking.endTime.hour % 12}:00 ${booking.endTime.hour < 12 ? 'AM' : 'PM'}",
+
+            final DateTime bookingEndDateTime = DateTime(
+              booking.endTime.year,
+              booking.endTime.month,
+              booking.endTime.day,
+              booking.endTime.hour,
+              booking.endTime.minute,
             );
 
             // Check if the selected time range overlaps with the booking time
-            return !(endIndex <= bookingStartIndex ||
-                startIndex >= bookingEndIndex);
+            return selectedStartDateTime.isBefore(bookingEndDateTime) &&
+                selectedEndDateTime.isAfter(bookingStartDateTime);
           });
 
           return !isConflicting; // Include only pods with no conflicts
@@ -246,24 +285,31 @@ class _HomeScreenState extends State<HomeScreen> {
     }
   }
 
-  int computeBookingPrice(int hourlyPrice, String? startTime, String? endTime) {
+  double computeBookingPrice(
+      int hourlyPrice, TimeOfDay? startTime, TimeOfDay? endTime) {
     if (startTime == null || endTime == null) {
       throw Exception("Require startTime and endTime to compute booking price");
     }
-    DateTime parsedStartTime = parseTime(startTime);
-    DateTime parsedEndTime = parseTime(endTime);
 
-    Duration difference = parsedEndTime.difference(parsedStartTime);
+    // Convert TimeOfDay to DateTime
+    final now = DateTime.now();
+    final DateTime startDateTime = DateTime(
+        now.year, now.month, now.day, startTime.hour, startTime.minute);
+    final DateTime endDateTime =
+        DateTime(now.year, now.month, now.day, endTime.hour, endTime.minute);
 
-    return hourlyPrice * difference.inHours;
+    // Calculate the difference
+    final Duration difference = endDateTime.difference(startDateTime);
+
+    return hourlyPrice * (difference.inMinutes / 60.0);
   }
 
   void showConfirmationOverlay(
     BuildContext context,
     Pod pod,
-    String? startTime,
-    String? endTime,
-    int bookingPrice,
+    TimeOfDay? startTime,
+    TimeOfDay? endTime,
+    double bookingPrice,
     VoidCallback onConfirm,
   ) {
     showModalBottomSheet(
@@ -307,7 +353,7 @@ class _HomeScreenState extends State<HomeScreen> {
               const SizedBox(height: 16),
               // Booking Times
               Text(
-                'Time: ${startTime ?? 'N/A'} to ${endTime ?? 'N/A'}',
+                'Time: ${startTime != null ? startTime.format(context) : 'N/A'} to ${endTime != null ? endTime.format(context) : 'N/A'}',
                 style: const TextStyle(fontSize: 14),
               ),
               const SizedBox(height: 16),
@@ -359,14 +405,14 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  void handleBooking(Pod pod, DateTime date, String startTime, String endTime,
-      int bookingPrice) async {
+  void handleBooking(Pod pod, DateTime date, TimeOfDay startTime,
+      TimeOfDay endTime, double bookingPrice) async {
     // Display a SnackBar to confirm the booking
     Booking booking = Booking(
         podId: pod.id,
         userId: widget.userId,
-        startTime: parseTime(startTime, date: date),
-        endTime: parseTime(endTime, date: date),
+        startTime: parseTimeOfDay(startTime, date: date),
+        endTime: parseTimeOfDay(endTime, date: date),
         createdAt: DateTime.now(),
         price: bookingPrice,
         notes: "no notes",
@@ -396,33 +442,15 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  DateTime parseTime(String time, {DateTime? date}) {
+  DateTime parseTimeOfDay(TimeOfDay time, {DateTime? date}) {
     final DateTime dateToUse = date ?? DateTime.now();
 
-    // Extract hour, minute, and period (AM/PM) using a regex
-    final match = RegExp(r'^(\d{1,2}):(\d{2})\s?(AM|PM)$').firstMatch(time);
-
-    if (match == null) {
-      throw FormatException('Invalid time format: $time');
-    }
-
-    int hour = int.parse(match.group(1)!); // Extract hour
-    final int minute = int.parse(match.group(2)!); // Extract minute
-    final String period = match.group(3)!; // Extract AM/PM
-
-    // Adjust hour based on AM/PM
-    if (period == 'PM' && hour != 12) {
-      hour += 12;
-    } else if (period == 'AM' && hour == 12) {
-      hour = 0;
-    }
-
     return DateTime(
-        dateToUse.year, dateToUse.month, dateToUse.day, hour, minute);
+        dateToUse.year, dateToUse.month, dateToUse.day, time.hour, time.minute);
   }
 
   String getPodStatus(String? openingTime, String? closingTime) {
-    final currentTime = DateTime.now();
+    final TimeOfDay currentTime = TimeOfDay.now();
 
     if (openingTime == null || closingTime == null) {
       print("Opening or closing time are null therefore marking as closed");
@@ -431,15 +459,24 @@ class _HomeScreenState extends State<HomeScreen> {
 
     print("Pod opening time: ${openingTime}, pod closing time: ${closingTime}");
 
-    final opening = parseTime(openingTime);
-    final closing = parseTime(closingTime);
+    final List<String> openingParts = openingTime.split(":");
+    final List<String> closingParts = closingTime.split(":");
+
+    final TimeOfDay podOpeningTime = TimeOfDay(
+        hour: int.parse(openingParts[0]), minute: int.parse(openingParts[1]));
+
+    final TimeOfDay podClosingTime = TimeOfDay(
+        hour: int.parse(closingParts[0]), minute: int.parse(closingParts[1]));
 
     print(
-        "Parsed opening and closing times: Opening= ${opening}, Closing=${closing}");
+        "Parsed opening and closing times: Opening= ${podOpeningTime}, Closing=${podClosingTime}");
 
     // Compare times
-    if (currentTime.isAfter(opening) && currentTime.isBefore(closing)) {
-      if (closing.difference(currentTime).inMinutes <= 30) {
+    if (currentTime.isAfter(podOpeningTime) &&
+        currentTime.isBefore(podClosingTime)) {
+      if ((podClosingTime.hour * 60 + podClosingTime.minute) -
+              (currentTime.hour * 60 + currentTime.minute) <=
+          30) {
         return 'Closes Soon'; // Yellow
       }
       return 'Open Now'; // Green
@@ -454,11 +491,6 @@ class _HomeScreenState extends State<HomeScreen> {
 
     final topOffset = screenHeight * 0.05; // 5% of screen height
     final rightOffset = screenWidth * 0.05; // 5% of screen width
-
-    // Generate valid end time options dynamically based on selected start time
-    final List<String> validEndTimes = selectedStartTime != null
-        ? timeSlots.sublist(timeSlots.indexOf(selectedStartTime!) + 1)
-        : timeSlots;
 
     return Scaffold(
       body: Stack(
@@ -603,32 +635,102 @@ class _HomeScreenState extends State<HomeScreen> {
                     Row(
                       children: [
                         Expanded(
-                          child: TimeSelectionDropdown(
-                            label: 'Start Time',
-                            selectedValue: selectedStartTime,
-                            items: timeSlots,
-                            onChanged: (value) {
-                              setState(() {
-                                selectedStartTime = value;
-                                // Reset end time if it’s no longer valid
-                                if (selectedEndTime != null &&
-                                    timeSlots.indexOf(selectedEndTime!) <=
-                                        timeSlots.indexOf(value!)) {
-                                  selectedEndTime = null;
-                                }
-                              });
-                            },
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              const Text(
+                                'Start Time',
+                                style: TextStyle(
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                              const SizedBox(height: 4),
+                              GestureDetector(
+                                onTap: () {
+                                  showModalBottomSheet(
+                                    context: context,
+                                    isScrollControlled: true,
+                                    builder: (context) => TimePickerModal(
+                                      initialTime:
+                                          selectedStartTime ?? TimeOfDay.now(),
+                                      onTimeSelected: (time) {
+                                        setState(() {
+                                          selectedStartTime = time;
+                                          // Reset end time if it’s no longer valid
+                                          if (selectedEndTime != null &&
+                                              selectedStartTime!
+                                                  .isAfter(selectedEndTime!)) {
+                                            selectedEndTime = null;
+                                          }
+                                        });
+                                      },
+                                    ),
+                                  );
+                                },
+                                child: Container(
+                                  padding: const EdgeInsets.symmetric(
+                                      vertical: 12, horizontal: 16),
+                                  decoration: BoxDecoration(
+                                    border: Border.all(color: Colors.grey),
+                                    borderRadius: BorderRadius.circular(8),
+                                  ),
+                                  child: Text(
+                                    selectedStartTime != null
+                                        ? selectedStartTime!.format(context)
+                                        : 'Select Time',
+                                    style: const TextStyle(fontSize: 16),
+                                  ),
+                                ),
+                              ),
+                            ],
                           ),
                         ),
                         const SizedBox(width: 16),
                         Expanded(
-                          child: TimeSelectionDropdown(
-                            label: 'End Time',
-                            selectedValue: selectedEndTime,
-                            items: validEndTimes,
-                            onChanged: (value) {
-                              setState(() => selectedEndTime = value);
-                            },
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              const Text(
+                                'End Time',
+                                style: TextStyle(
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                              const SizedBox(height: 4),
+                              GestureDetector(
+                                onTap: () {
+                                  showModalBottomSheet(
+                                    context: context,
+                                    isScrollControlled: true,
+                                    builder: (context) => TimePickerModal(
+                                      initialTime:
+                                          selectedEndTime ?? TimeOfDay.now(),
+                                      onTimeSelected: (time) {
+                                        setState(() {
+                                          selectedEndTime = time;
+                                        });
+                                      },
+                                    ),
+                                  );
+                                },
+                                child: Container(
+                                  padding: const EdgeInsets.symmetric(
+                                      vertical: 12, horizontal: 16),
+                                  decoration: BoxDecoration(
+                                    border: Border.all(color: Colors.grey),
+                                    borderRadius: BorderRadius.circular(8),
+                                  ),
+                                  child: Text(
+                                    selectedEndTime != null
+                                        ? selectedEndTime!.format(context)
+                                        : 'Select Time',
+                                    style: const TextStyle(fontSize: 16),
+                                  ),
+                                ),
+                              ),
+                            ],
                           ),
                         ),
                       ],
@@ -808,7 +910,7 @@ class _HomeScreenState extends State<HomeScreen> {
                                 selectedEndTime != null)
                             ? () {
                                 // Compute price of theoretical booking
-                                int bookingPrice = computeBookingPrice(
+                                double bookingPrice = computeBookingPrice(
                                     selectedPod!.price,
                                     selectedStartTime,
                                     selectedEndTime);
@@ -842,7 +944,7 @@ class _HomeScreenState extends State<HomeScreen> {
                           (selectedStartTime != null &&
                                   selectedEndTime != null &&
                                   selectedDate != null)
-                              ? 'Book Pod from $selectedStartTime to $selectedEndTime'
+                              ? 'Book Pod from ${selectedStartTime!.format(context)} to ${selectedEndTime!.format(context)}'
                               : 'Select date and times to book this pod', // Placeholder text
                           style: const TextStyle(
                             color: Colors.white,

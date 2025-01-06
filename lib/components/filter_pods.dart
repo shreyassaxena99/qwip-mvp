@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 
 class FilterPodsButton extends StatelessWidget {
-  final String? selectedStartTime;
-  final String? selectedEndTime;
+  final TimeOfDay? selectedStartTime;
+  final TimeOfDay? selectedEndTime;
   final List<String> timeSlots;
   final VoidCallback onFilter;
 
@@ -18,6 +18,8 @@ class FilterPodsButton extends StatelessWidget {
   Widget build(BuildContext context) {
     return FloatingActionButton(
       onPressed: () {
+        print("Start time selected: $selectedStartTime");
+        print("End time selected: $selectedEndTime");
         if (selectedStartTime == null || selectedEndTime == null) {
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
@@ -25,9 +27,7 @@ class FilterPodsButton extends StatelessWidget {
           );
           return;
         }
-        int startIndex = timeSlots.indexOf(selectedStartTime!);
-        int endIndex = timeSlots.indexOf(selectedEndTime!);
-        if (endIndex <= startIndex) {
+        if (selectedStartTime!.isAfter(selectedEndTime!)) {
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(content: Text('End time must be after start time')),
           );

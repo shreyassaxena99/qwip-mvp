@@ -1,13 +1,13 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 
 class Booking {
-  final String? id;
+  String? id;
   final String podId;
   final String userId;
   final DateTime startTime;
   final DateTime endTime;
   final DateTime createdAt;
-  final int price;
+  final double price;
   final String notes;
   String status;
 

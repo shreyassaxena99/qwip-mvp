@@ -75,7 +75,7 @@ final List<Map<String, dynamic>> mockPods = [
     'latitude': 51.5054,
     'longitude': -0.0235,
     'price': '£13/hour',
-    'address': 'Canary Wharf, London E14 5AB',
+    'address': 'Cabot Square, London E14 5AB',
     'imageUrl': 'https://via.placeholder.com/300x200',
     'schedule': ['10:00 AM', '12:00 PM', '1:00 PM', '3:00 PM', '4:00 PM'],
     'description': 'For the bankers out there',

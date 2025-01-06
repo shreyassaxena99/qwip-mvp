@@ -67,28 +67,6 @@ class _MapComponentState extends State<MapComponent> {
     super.dispose();
   }
 
-  void _showPodDetails(BuildContext context, Map<String, dynamic> pod) {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: Text(pod['name']),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Text('Price: ${pod['price'].toString()}'),
-            Text('Address: ${pod['address']}'),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Close'),
-          ),
-        ],
-      ),
-    );
-  }
-
   @override
   Widget build(BuildContext context) {
     return Stack(
