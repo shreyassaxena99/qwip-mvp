@@ -373,7 +373,7 @@ class _HomeScreenState extends State<HomeScreen> {
         status: "confirmed");
     bool status = await db.addBooking(booking);
     String alertText = status
-        ? '${widget.userId} has booked "${pod.name}" from $startTime to $endTime!'
+        ? 'Booked "${pod.name}" from $startTime to $endTime! View QR Code in "View Bookings"'
         : "Failed to book pod";
 
     if (status) {
