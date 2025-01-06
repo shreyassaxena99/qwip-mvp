@@ -90,11 +90,10 @@ Qwip-MVP is a Flutter-based mobile application designed to provide a seamless bo
 ```bash
 lib/
 ├── main.dart                  # Entry point of the app
-├── screens/                   # UI screens (e.g., BookingScreen, QRCodeViewer)
-├── widgets/                   # Reusable UI components (e.g., BookingTile)
-├── services/                  # Business logic and Firebase interactions
-├── models/                    # Data models (e.g., Booking)
-└── utils/                     # Utility functions (e.g., Date formatting)
+├── screens/                   # UI screens (e.g., BookingScreen, AuthScreen)
+├── components/                # Reusable UI components (e.g., BookingTile)
+├── services/                  # Business logic and Firebase interactions (TODO)
+└── data_classes/              # Data models (e.g., Booking)
 ```
 
 ### Future Enhancements and Kanban Board
