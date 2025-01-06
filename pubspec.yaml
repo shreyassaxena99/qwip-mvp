@@ -41,6 +41,7 @@ dependencies:
   google_maps_flutter: ^2.10.0
   syncfusion_flutter_maps: ^21.1.36
   flutter_xlider: ^3.5.0
+  http: ^0.13.5
 
 dev_dependencies:
   flutter_test:

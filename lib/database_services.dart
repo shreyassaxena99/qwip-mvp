@@ -1,6 +1,7 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:qwip_app/data_classes/booking.dart';
 import 'package:qwip_app/data_classes/pod.dart';
+import 'package:qwip_app/qr_code_services.dart';
 
 class DatabaseServices {
   // Firestore instance
@@ -156,8 +157,18 @@ class DatabaseServices {
   // Add a new booking to a pod's schedule
   Future<bool> addBooking(Booking booking) async {
     try {
-      await bookingsCollection.add(booking.toFirestore());
-      print('Booking added successfully!');
+      DocumentReference bookingRef =
+          await bookingsCollection.add(booking.toFirestore());
+      String bookingId = bookingRef.id;
+      Map<String, dynamic> generateQRCodeResponse =
+          await QRCodeService.generateQRCode(bookingId);
+      print("generateQRCodeResponse: ${generateQRCodeResponse}");
+      if (!generateQRCodeResponse["success"]) {
+        await deleteBooking(booking);
+        throw Exception("Failed to generate QR Code");
+      } else {
+        print('Booking added successfully: ${generateQRCodeResponse}');
+      }
       return true;
     } catch (e) {
       // Log or handle the error
@@ -174,6 +185,21 @@ class DatabaseServices {
     } catch (e) {
       print("Error deleting booking: $e");
       return false;
+    }
+  }
+
+  // Get QR Code of Booking
+  Future<String> fetchQRCode(String? bookingId) async {
+    if (bookingId == null) {
+      throw Exception("Need booking id to fetch QR code");
+    }
+    final DocumentSnapshot bookingDoc =
+        await bookingsCollection.doc(bookingId).get();
+
+    if (bookingDoc.exists) {
+      return bookingDoc.get("qr_code_image");
+    } else {
+      throw Exception("Booking not found");
     }
   }
 }

@@ -805,9 +805,7 @@ class _HomeScreenState extends State<HomeScreen> {
                       width: double.infinity,
                       child: ElevatedButton(
                         onPressed: (selectedStartTime != null &&
-                                selectedEndTime != null &&
-                                selectedStartTime != 'Any' &&
-                                selectedEndTime != 'Any')
+                                selectedEndTime != null)
                             ? () {
                                 // Compute price of theoretical booking
                                 int bookingPrice = computeBookingPrice(
@@ -843,10 +841,9 @@ class _HomeScreenState extends State<HomeScreen> {
                         child: Text(
                           (selectedStartTime != null &&
                                   selectedEndTime != null &&
-                                  selectedStartTime != 'Any' &&
-                                  selectedEndTime != 'Any')
+                                  selectedDate != null)
                               ? 'Book Pod from $selectedStartTime to $selectedEndTime'
-                              : 'Select times to book this pod', // Placeholder text
+                              : 'Select date and times to book this pod', // Placeholder text
                           style: const TextStyle(
                             color: Colors.white,
                             fontWeight: FontWeight.bold,
