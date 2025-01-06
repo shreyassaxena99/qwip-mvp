@@ -1,7 +1,8 @@
+import 'dart:convert';
+
 import 'package:flutter/material.dart';
 import 'package:qwip_app/data_classes/booking.dart';
 import 'package:qwip_app/database_services.dart';
-import 'package:qwip_app/screens/qr_code_viewer.dart';
 
 class BookingTile extends StatefulWidget {
   final Booking booking;
@@ -43,26 +44,14 @@ class _BookingTileState extends State<BookingTile> {
 
   Future<void> handleViewQRCode() async {
     try {
-      // Show loading indicator
-      setState(() {
-        isLoadingQRCode = true;
-      });
-
-      // Call the database service to fetch the QR code
-      final qrCodeImage = await db.fetchQRCode(widget.booking.id);
-
-      print('Received qr code image navigating to qr code viewer screen');
-      // Navigate to a QR Code viewer screen or display the QR code
-      Navigator.push(
-        context,
-        MaterialPageRoute(
-          builder: (context) => QRCodeViewer(qrCodeImageBase64: qrCodeImage),
-        ),
-      );
+      // Fetch the QR Code Base64 from the backend
+      String qrCodeBase64 = await db.fetchQRCode(widget.booking.id);
+      // Show the bottom sheet with the QR code
+      showQRCodeBottomSheet(context, qrCodeBase64);
     } catch (e) {
-      // Show an error message if fetching fails
+      // Handle errors (e.g., failed API call)
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text("Failed to load QR Code: $e")),
+        SnackBar(content: Text("Error fetching QR Code: $e")),
       );
     } finally {
       // Hide loading indicator
@@ -70,6 +59,58 @@ class _BookingTileState extends State<BookingTile> {
         isLoadingQRCode = false;
       });
     }
+  }
+
+  void showQRCodeBottomSheet(BuildContext context, String qrCodeBase64) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true, // Allow the bottom sheet to grow dynamically
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+      ),
+      builder: (context) {
+        return Padding(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              // Header Section
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  const Text(
+                    'Your QR Code',
+                    style: TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  IconButton(
+                    icon: const Icon(Icons.close),
+                    onPressed: () {
+                      Navigator.pop(context); // Close the bottom sheet
+                    },
+                  ),
+                ],
+              ),
+              const SizedBox(height: 16),
+              // QR Code Section
+              Center(
+                child: Image.memory(
+                  // Decode the Base64 string into image bytes
+                  base64Decode(qrCodeBase64),
+                  fit: BoxFit.contain,
+                  height: 200, // Set a fixed height for the QR code
+                  width: 200, // Set a fixed width for the QR code
+                ),
+              ),
+              const SizedBox(height: 16),
+            ],
+          ),
+        );
+      },
+    );
   }
 
   List<PopupMenuEntry<String>> getMenuOptions(Booking booking) {
