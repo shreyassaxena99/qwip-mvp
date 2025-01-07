@@ -419,7 +419,7 @@ class _HomeScreenState extends State<HomeScreen> {
         status: "confirmed");
     bool status = await db.addBooking(booking);
     String alertText = status
-        ? 'Booked "${pod.name}" from $startTime to $endTime! View QR Code in "View Bookings"'
+        ? 'Booked "${pod.name}" from ${startTime.toString()} to ${endTime.toString()}! View QR Code in "View Bookings"'
         : "Failed to book pod";
 
     if (status) {
@@ -665,6 +665,10 @@ class _HomeScreenState extends State<HomeScreen> {
                                           }
                                         });
                                       },
+                                      selectedDate: selectedDate ??
+                                          DateTime
+                                              .now(), // Example selected date
+                                      currentDate: DateTime.now(),
                                     ),
                                   );
                                 },
@@ -712,6 +716,12 @@ class _HomeScreenState extends State<HomeScreen> {
                                           selectedEndTime = time;
                                         });
                                       },
+                                      selectedDate: selectedDate ??
+                                          DateTime
+                                              .now(), // Example selected date
+                                      currentDate: DateTime.now(),
+                                      selectedStartTime:
+                                          selectedStartTime, // Passing the selected start time for additional filtering on times available
                                     ),
                                   );
                                 },
